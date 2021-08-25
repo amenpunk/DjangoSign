@@ -1,2 +1,5 @@
 ipfsApi==
+pyPdf==
+reportlab==
+pdf==
 

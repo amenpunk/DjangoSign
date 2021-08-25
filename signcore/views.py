@@ -10,8 +10,11 @@ from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.core.files.storage import default_storage
-import ipfsApi
-import json
+
+from PyPDF2 import PdfFileWriter, PdfFileReader
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 
 
 def log(js):
@@ -39,9 +42,6 @@ class FileUploadView(APIView):
 
     def post(self, request, format='pdf'):
         try:
-
-
-
             up_file = request.FILES['file']
             print(up_file)
             file_name = default_storage.save(up_file.name, up_file)
@@ -76,3 +76,27 @@ class IPFS(APIView):
         except BaseException as e:
             return JsonResponse( { 'status': False, "why" : e }, safe=False)
 
+    def get(self,request):
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=letter)
+        can.drawString(70, 750, "DOC-SIGN : <QmPfUwrgjSV9poLeJJ1sxR1MAwPQ7cTBX3N54HTMokQTmy>")
+        can.save()
+
+        packet.seek(0)
+        doc = default_storage.url('cartaderenuncia.pdf')
+        new_pdf = PdfFileReader(packet)
+        existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
+        output = PdfFileWriter()
+
+        print(output)
+
+        page = existing_pdf.getPage(0)
+        page.mergePage(new_pdf.getPage(0))
+        output.addPage(page)
+
+        outputStream = open("destination.pdf", "wb")
+        output.write(outputStream)
+        outputStream.close()
+
+
+        return HttpResponse('success')
