@@ -1,55 +1,16 @@
 from django.shortcuts import render
 from rest_framework import viewsets,status
-from .serializers import FileSerializer
-from .models import File
-from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
-from django.shortcuts import render
-from .forms import UploadFileForm
-from .handleUpload import handle_uploaded_file
-from rest_framework.parsers import FileUploadParser, MultiPartParser
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from django.http import HttpResponse, JsonResponse
 from django.core.files.storage import default_storage
-
 from PyPDF2 import PdfFileWriter, PdfFileReader
-import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
-
-
-def log(js):
-    json_object = json.loads(js)
-    json_formatted_str = json.dumps(json_object, indent=2)
-    print(json_formatted_str)
-
-class FileViewSet(viewsets.ModelViewSet):
-    queryset = File.objects.all().order_by('name')
-    serializer_class = FileSerializer
-
-
-def upload_file(request):
-    if request.method == 'POST':
-        form = UploadFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            handle_uploaded_file(request.FILES['file'])
-            return HttpResponseRedirect('/success/url/')
-    else:
-        form = UploadFileForm()
-    return render(request, 'upload.html', {'form': form})
-
-class FileUploadView(APIView):
-    parser_classes = (MultiPartParser, )
-
-    def post(self, request, format='pdf'):
-        try:
-            up_file = request.FILES['file']
-            print(up_file)
-            file_name = default_storage.save(up_file.name, up_file)
-            print(file_name)
-            return Response(up_file.name, status.HTTP_201_CREATED)
-        except BaseException as e:
-            print(f'error {e}')
-
+from rest_framework.views import APIView
+from rest_framework.parsers import FileUploadParser, MultiPartParser
+import ipfsApi
+import io
+import os
 
 def IpCheck(request):
     # ipfs.io/ipfs/hash
@@ -65,38 +26,48 @@ def IpCheck(request):
         return HttpResponse(f'error {e}')
 
 class IPFS(APIView):
+    ## QmcULburRsY995hA8sCnrnavEcpeeva1G1FD926u8WcM1W
+
     parser_classes = (MultiPartParser,)
     def post (self, request, format='pdf'):
         try:
+
             up_file = request.FILES['file']
             ipfs = ipfsApi.Client('127.0.0.1', 5001)
-            ip = ipfs.add(up_file)
-            print(ip)
+            hash_info = ipfs.add(up_file)
+
+            signature = hash_info['Hash']
+            filename = signature + '.pdf'
+
+            exist = default_storage.exists(filename)
+
+            if not exist:
+                default_storage.save(name=filename,content=up_file);
+
+            packet = io.BytesIO()
+            can = canvas.Canvas(packet, pagesize=letter)
+            # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
+            can.drawString(0, 0, f"DOC-SIGN : <{signature}>")
+            can.save()
+
+            packet.seek(0)
+            doc = default_storage.url(filename)
+            new_pdf = PdfFileReader(packet)
+            existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
+            output = PdfFileWriter()
+            page = existing_pdf.getPage(0)
+            page.mergePage(new_pdf.getPage(0))
+            output.addPage(page)
+
+            outputStream = open(filename, "wb")
+            output.write(outputStream)
+            outputStream.close()
+
             return JsonResponse( { 'status': True, "why" : 'success' }, safe=False)
+
         except BaseException as e:
-            return JsonResponse( { 'status': False, "why" : e }, safe=False)
+            print(e)
+            return JsonResponse( { 'status': False, "why" : 'err' }, safe=False)
 
     def get(self,request):
-        packet = io.BytesIO()
-        can = canvas.Canvas(packet, pagesize=letter)
-        can.drawString(70, 750, "DOC-SIGN : <QmPfUwrgjSV9poLeJJ1sxR1MAwPQ7cTBX3N54HTMokQTmy>")
-        can.save()
-
-        packet.seek(0)
-        doc = default_storage.url('cartaderenuncia.pdf')
-        new_pdf = PdfFileReader(packet)
-        existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
-        output = PdfFileWriter()
-
-        print(output)
-
-        page = existing_pdf.getPage(0)
-        page.mergePage(new_pdf.getPage(0))
-        output.addPage(page)
-
-        outputStream = open("destination.pdf", "wb")
-        output.write(outputStream)
-        outputStream.close()
-
-
-        return HttpResponse('success')
+        return HttpResponse('default route')
