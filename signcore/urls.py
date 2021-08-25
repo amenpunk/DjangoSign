@@ -12,6 +12,7 @@ router.register(r'files', views.FileViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('upload', views.FileUploadView.as_view())
+    path('upload', views.FileUploadView.as_view()),
+    path('ipfs', views.IPFS.as_view())
 
 ]
