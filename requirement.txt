@@ -1,5 +1,5 @@
 ipfsApi==
 pyPdf==
 reportlab==
-pdf==
+firebase-admin==
 

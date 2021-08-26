@@ -1,16 +1,19 @@
 from django.shortcuts import render
 from rest_framework import viewsets,status
 from rest_framework.response import Response
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, QueryDict
 from django.core.files.storage import default_storage
 from PyPDF2 import PdfFileWriter, PdfFileReader
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from rest_framework.views import APIView
 from rest_framework.parsers import FileUploadParser, MultiPartParser
+
+from .Db import Firestore
+
 import ipfsApi
 import io
-import os
+import time
 
 def IpCheck(request):
     # ipfs.io/ipfs/hash
@@ -26,11 +29,11 @@ def IpCheck(request):
         return HttpResponse(f'error {e}')
 
 class IPFS(APIView):
-    ## QmcULburRsY995hA8sCnrnavEcpeeva1G1FD926u8WcM1W
-
     parser_classes = (MultiPartParser,)
     def post (self, request, format='pdf'):
         try:
+
+            data = QueryDict.dict(request.POST)
 
             up_file = request.FILES['file']
             ipfs = ipfsApi.Client('127.0.0.1', 5001)
@@ -63,6 +66,17 @@ class IPFS(APIView):
             output.write(outputStream)
             outputStream.close()
 
+            ### save insert into database
+            document = {
+                'write' : time.time(),
+                'hash' : signature,
+                'filename' : data['filename']
+            }
+
+            database = Firestore()
+            doc_ref = database.db.collection('documents').document(data['uid']).collection('files').document(signature)
+            doc_ref.set(document)
+
             return JsonResponse( { 'status': True, "why" : 'success' }, safe=False)
 
         except BaseException as e:
@@ -70,4 +84,20 @@ class IPFS(APIView):
             return JsonResponse( { 'status': False, "why" : 'err' }, safe=False)
 
     def get(self,request):
-        return HttpResponse('default route')
+        try:
+            data = QueryDict.dict(request.GET)
+            uid = data['uid']
+            database = Firestore()
+            files_ref = database.db.collection('documents').document(uid).collection('files')
+            docs = files_ref.stream()
+            files = []
+
+            for doc in docs:
+                dic = doc.to_dict()
+                files.append(dic)
+
+            return JsonResponse( { 'status': True, "why" : 'success', 'data' : files })
+        except BaseException as e:
+            print(e)
+            return JsonResponse( { 'status': False, "why" : 'error' }, safe=False)
+
