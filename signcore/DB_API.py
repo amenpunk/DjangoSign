@@ -3,8 +3,7 @@ from django.http import HttpResponse, JsonResponse
 from rest_framework import viewsets,status
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.throttling import UserRateThrottle
-
-from .Db import Firestore
+from firebase_admin import firestore
 
 import os
 
@@ -12,7 +11,7 @@ class API(APIView):
 
     def get(self, request):
         try:
-            database = Firestore()
+            dbv = firestore.client()
             doc = {
                 'first': 'ming',
                 'last': 'mecca',

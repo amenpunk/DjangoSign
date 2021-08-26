@@ -9,24 +9,12 @@ from reportlab.lib.pagesizes import letter
 from rest_framework.views import APIView
 from rest_framework.parsers import FileUploadParser, MultiPartParser
 
-from .Db import Firestore
-
 import ipfsApi
 import io
+import os
 import time
 
-def IpCheck(request):
-    # ipfs.io/ipfs/hash
-    try:
-        ipfs = ipfsApi.Client('127.0.0.1', 5001)
-        doc = default_storage.open('spider_white.jpg')
-        ip = ipfs.add(doc)
-        print(ip)
-        res = { "status" : True }
-        return JsonResponse(res, safe=False)
-    except BaseException as e:
-        print('api error -> ', e)
-        return HttpResponse(f'error {e}')
+from firebase_admin import firestore
 
 class IPFS(APIView):
     parser_classes = (MultiPartParser,)
@@ -34,10 +22,13 @@ class IPFS(APIView):
         try:
 
             data = QueryDict.dict(request.POST)
+            print(data)
 
             up_file = request.FILES['file']
             ipfs = ipfsApi.Client('127.0.0.1', 5001)
             hash_info = ipfs.add(up_file)
+
+            print('IPFS response -> ',hash_info)
 
             signature = hash_info['Hash']
             filename = signature + '.pdf'
@@ -47,24 +38,31 @@ class IPFS(APIView):
             if not exist:
                 default_storage.save(name=filename,content=up_file);
 
-            packet = io.BytesIO()
-            can = canvas.Canvas(packet, pagesize=letter)
-            # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
-            can.drawString(0, 0, f"DOC-SIGN : <{signature}>")
-            can.save()
+            # packet = io.BytesIO()
+            # can = canvas.Canvas(packet, pagesize=letter)
+            # # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
+            # can.drawString(0, 0, f"DOC-SIGN : <{signature}>")
+            # can.save()
 
-            packet.seek(0)
-            doc = default_storage.url(filename)
-            new_pdf = PdfFileReader(packet)
-            existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
-            output = PdfFileWriter()
-            page = existing_pdf.getPage(0)
-            page.mergePage(new_pdf.getPage(0))
-            output.addPage(page)
+            # packet.seek(0)
+            # doc = default_storage.url(filename)
+            # new_pdf = PdfFileReader(packet)
+            # existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
 
-            outputStream = open(filename, "wb")
-            output.write(outputStream)
-            outputStream.close()
+            # if new_pdf.isEncrypted:
+            #     new_pdf.decrypt('')
+
+            # if existing_pdf.isEncrypted:
+            #     existing_pdf.decrypt('')
+
+            # output = PdfFileWriter()
+            # page = existing_pdf.getPage(0)
+            # page.mergePage(new_pdf.getPage(0))
+            # output.addPage(page)
+
+            # outputStream = open(filename, "wb")
+            # output.write(outputStream)
+            # outputStream.close()
 
             ### save insert into database
             document = {
@@ -73,22 +71,25 @@ class IPFS(APIView):
                 'filename' : data['filename']
             }
 
-            database = Firestore()
-            doc_ref = database.db.collection('documents').document(data['uid']).collection('files').document(signature)
-            doc_ref.set(document)
+
+            db = firestore.client()
+
+            doc_ref = db.collection('documents').document(data['uid']).collection('files').document(signature)
+            save = doc_ref.set(document)
+            print(save)
 
             return JsonResponse( { 'status': True, "why" : 'success' }, safe=False)
 
         except BaseException as e:
             print(e)
-            return JsonResponse( { 'status': False, "why" : 'err' }, safe=False)
+            return JsonResponse( { 'status': False, "why" : e }, safe=False)
 
     def get(self,request):
         try:
             data = QueryDict.dict(request.GET)
             uid = data['uid']
-            database = Firestore()
-            files_ref = database.db.collection('documents').document(uid).collection('files')
+            db = firestore.client()
+            files_ref = db.collection('documents').document(uid).collection('files')
             docs = files_ref.stream()
             files = []
 
