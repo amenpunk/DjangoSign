@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
-from django.http import HttpResponse, JsonResponse,QueryDict
+from django.http import HttpResponse, JsonResponse,QueryDict, FileResponse
 from rest_framework import viewsets,status
 from rest_framework.decorators import api_view
+from django.core.files.storage import default_storage
 import ipfsApi
 
 import os
@@ -12,13 +13,11 @@ class API(APIView):
         try:
             data = QueryDict.dict(request.GET)
             print(data)
-            uid = data['uid']
-
-            ipfs = ipfsApi.Client('127.0.0.1', 5001)
-            doc = ipfs.get(uid)
-            print(doc)
-
-            return JsonResponse({ 'status' : True })
+            file_name = data['id']
+            print(file_name)
+            pdf = os.getcwd() + default_storage.url(f'{file_name}.pdf')
+            response = FileResponse(open(pdf, 'rb'))
+            return response
         except BaseException as e:
             print(e)
             return JsonResponse({ 'status' : False })
@@ -27,11 +26,3 @@ class API(APIView):
         print('ok')
         return HttpResponse('created successfuly')
 
-    @api_view(['GET', 'POST'])
-    def hello(request):
-        try:
-            print('okkk')
-            return JsonResponse({ 'status' : True })
-        except BaseException as e:
-            print(e)
-            return JsonResponse({ 'status' : False })
