@@ -6,8 +6,10 @@ from django.core.files.storage import default_storage
 from PyPDF2 import PdfFileWriter, PdfFileReader
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.colors import magenta, red
 from rest_framework.views import APIView
 from rest_framework.parsers import FileUploadParser, MultiPartParser
+from datetime import datetime, timezone
 
 import ipfsApi
 import io
@@ -15,6 +17,7 @@ import os
 import time
 
 from firebase_admin import firestore
+
 
 class IPFS(APIView):
     parser_classes = (MultiPartParser,)
@@ -32,37 +35,45 @@ class IPFS(APIView):
 
             signature = hash_info['Hash']
             filename = signature + '.pdf'
+            DATE_FORMAT = '%Y-%m-%d %I:%M'
+
+            timestamp =  datetime.now()
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.strftime(DATE_FORMAT);
 
             exist = default_storage.exists(filename)
 
             if not exist:
                 default_storage.save(name=filename,content=up_file);
 
-            # packet = io.BytesIO()
-            # can = canvas.Canvas(packet, pagesize=letter)
-            # # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
-            # can.drawString(0, 0, f"DOC-SIGN : <{signature}>")
-            # can.save()
+            packet = io.BytesIO()
+            can = canvas.Canvas(packet, pagesize=letter)
+            can.setFont("Times-Roman", 17)
+            can.setFillColor(red)
+            # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
 
-            # packet.seek(0)
-            # doc = default_storage.url(filename)
-            # new_pdf = PdfFileReader(packet)
-            # existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
+            can.drawString(0,100, f"<{signature}><{timestamp}>")
+            can.save()
 
-            # if new_pdf.isEncrypted:
-            #     new_pdf.decrypt('')
+            packet.seek(0)
+            doc = default_storage.url(filename)
+            new_pdf = PdfFileReader(packet)
+            existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
 
-            # if existing_pdf.isEncrypted:
-            #     existing_pdf.decrypt('')
+            if new_pdf.isEncrypted:
+                new_pdf.decrypt('')
 
-            # output = PdfFileWriter()
-            # page = existing_pdf.getPage(0)
-            # page.mergePage(new_pdf.getPage(0))
-            # output.addPage(page)
+            if existing_pdf.isEncrypted:
+                existing_pdf.decrypt('')
 
-            # outputStream = open(filename, "wb")
-            # output.write(outputStream)
-            # outputStream.close()
+            output = PdfFileWriter()
+            page = existing_pdf.getPage(0)
+            page.mergePage(new_pdf.getPage(0))
+            output.addPage(page)
+
+            outputStream = open(filename, "wb")
+            output.write(outputStream)
+            outputStream.close()
 
             ### save insert into database
             document = {
