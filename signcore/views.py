@@ -22,29 +22,18 @@ class IPFS(APIView):
     def post (self, request, format='pdf'):
         try:
 
+            now = str(time.time())
+
             data = QueryDict.dict(request.POST)
             print(request.FILES['file'])
-
-            # up_file = request.FILES['file']
-            #ipfs = ipfsApi.Client('127.0.0.1', 5001)
-            #hash_info = ipfs.add(up_file)
-
-            # print('IPFS response -> ',hash_info)
-
-            signature = "1231091283091283019283019283109238109328" ## hash_info['Hash']
-            filename = signature + '.pdf'
-
-            # exist = default_storage.exists(filename)
-
-            # if not exist:
-                # default_storage.save(name=filename,content=up_file);
+            filename = now + '.pdf'
 
             packet = io.BytesIO()
             can = canvas.Canvas(packet, pagesize=letter)
             can.setFont("Times-Roman", 15)
             can.setFillColor('red')
             # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
-            can.drawString(10, 500, f"DOC-SIGN : <{signature}>")
+            can.drawString(10, 500, f"DOC-SIGN : <{ filename  }>")
             can.save()
 
             packet.seek(0)
@@ -57,25 +46,24 @@ class IPFS(APIView):
             if existing_pdf.isEncrypted:
                 existing_pdf.decrypt('')
 
-            file_string = io.BytesIO()
+            # file_string = io.BytesIO()
 
             merge = PdfFileMerger()
             merge.append(existing_pdf)
             merge.append(new_pdf)
-            merge.write(file_string)
+            merge.write(filename)
+            # merge.write(file_string)
 
-            djang_new_pdf = File(file_string, filename)
-            default_storage.save(name=filename,content=djang_new_pdf);
+            # djang_new_pdf = File(file_string, filename)
+            # default_storage.save(name=filename,content=djang_new_pdf);
 
-
+            # doc = default_storage.url(filename)
 
             ipfs = ipfsApi.Client('127.0.0.1', 5001)
-            hash_info = ipfs.add(djang_new_pdf)
+            hash_info = ipfs.add(filename)
             print('IPFS response -> ',hash_info)
-
-
-            # todo => convert merge to file-like object.
-            # save in datastorage or something and put in ipfs
+            os.remove(filename)
+            signature =  hash_info['Hash']
 
             ### save insert into database
             document = {
@@ -83,9 +71,6 @@ class IPFS(APIView):
                 'hash' : signature,
                 'filename' : data['filename']
             }
-
-            return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
-
 
             db = firestore.client()
 
