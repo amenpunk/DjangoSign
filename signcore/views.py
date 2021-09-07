@@ -3,11 +3,12 @@ from rest_framework import viewsets,status
 from rest_framework.response import Response
 from django.http import HttpResponse, JsonResponse, QueryDict
 from django.core.files.storage import default_storage
-from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyPDF2 import PdfFileWriter, PdfFileReader, PdfFileMerger
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, A4
 from rest_framework.views import APIView
 from rest_framework.parsers import FileUploadParser, MultiPartParser
+from django.core.files import File
 
 import ipfsApi
 import io
@@ -22,47 +23,59 @@ class IPFS(APIView):
         try:
 
             data = QueryDict.dict(request.POST)
-            print(data)
+            print(request.FILES['file'])
 
-            up_file = request.FILES['file']
-            ipfs = ipfsApi.Client('127.0.0.1', 5001)
-            hash_info = ipfs.add(up_file)
+            # up_file = request.FILES['file']
+            #ipfs = ipfsApi.Client('127.0.0.1', 5001)
+            #hash_info = ipfs.add(up_file)
 
-            print('IPFS response -> ',hash_info)
+            # print('IPFS response -> ',hash_info)
 
-            signature = hash_info['Hash']
+            signature = "1231091283091283019283019283109238109328" ## hash_info['Hash']
             filename = signature + '.pdf'
 
-            exist = default_storage.exists(filename)
+            # exist = default_storage.exists(filename)
 
-            if not exist:
-                default_storage.save(name=filename,content=up_file);
+            # if not exist:
+                # default_storage.save(name=filename,content=up_file);
 
-            # packet = io.BytesIO()
-            # can = canvas.Canvas(packet, pagesize=letter)
-            # # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
-            # can.drawString(0, 0, f"DOC-SIGN : <{signature}>")
-            # can.save()
+            packet = io.BytesIO()
+            can = canvas.Canvas(packet, pagesize=letter)
+            can.setFont("Times-Roman", 15)
+            can.setFillColor('red')
+            # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
+            can.drawString(10, 500, f"DOC-SIGN : <{signature}>")
+            can.save()
 
-            # packet.seek(0)
-            # doc = default_storage.url(filename)
-            # new_pdf = PdfFileReader(packet)
-            # existing_pdf = PdfFileReader(open("../signature/"+ doc, "rb"))
+            packet.seek(0)
+            new_pdf = PdfFileReader(packet)
+            existing_pdf = PdfFileReader( request.FILES['file']   )
 
-            # if new_pdf.isEncrypted:
-            #     new_pdf.decrypt('')
+            if new_pdf.isEncrypted:
+                new_pdf.decrypt('')
 
-            # if existing_pdf.isEncrypted:
-            #     existing_pdf.decrypt('')
+            if existing_pdf.isEncrypted:
+                existing_pdf.decrypt('')
 
-            # output = PdfFileWriter()
-            # page = existing_pdf.getPage(0)
-            # page.mergePage(new_pdf.getPage(0))
-            # output.addPage(page)
+            file_string = io.BytesIO()
 
-            # outputStream = open(filename, "wb")
-            # output.write(outputStream)
-            # outputStream.close()
+            merge = PdfFileMerger()
+            merge.append(existing_pdf)
+            merge.append(new_pdf)
+            merge.write(file_string)
+
+            djang_new_pdf = File(file_string, filename)
+            default_storage.save(name=filename,content=djang_new_pdf);
+
+
+
+            ipfs = ipfsApi.Client('127.0.0.1', 5001)
+            hash_info = ipfs.add(djang_new_pdf)
+            print('IPFS response -> ',hash_info)
+
+
+            # todo => convert merge to file-like object.
+            # save in datastorage or something and put in ipfs
 
             ### save insert into database
             document = {
@@ -71,6 +84,8 @@ class IPFS(APIView):
                 'filename' : data['filename']
             }
 
+            return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
+
 
             db = firestore.client()
 
@@ -78,7 +93,7 @@ class IPFS(APIView):
             save = doc_ref.set(document)
             print(save)
 
-            return JsonResponse( { 'status': True, "why" : 'success' }, safe=False)
+            return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
         except BaseException as e:
             print(e)
