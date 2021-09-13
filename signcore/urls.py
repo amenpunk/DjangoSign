@@ -4,6 +4,7 @@ from rest_framework import routers
 
 from . import views
 from .DB_API import API
+from .Sign import Sign
 
 router = routers.DefaultRouter()
 
@@ -14,4 +15,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('ipfs', views.IPFS.as_view()),
     path('file', API.as_view()),
+    path('sign', Sign.as_view()),
 ]
