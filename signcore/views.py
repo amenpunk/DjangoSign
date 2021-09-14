@@ -9,6 +9,9 @@ from reportlab.lib.pagesizes import letter, A4
 from rest_framework.views import APIView
 from rest_framework.parsers import FileUploadParser, MultiPartParser
 from django.core.files import File
+from firebase_admin import firestore
+from reportlab.lib.utils import ImageReader
+import base64
 
 import ipfsApi
 import io
@@ -22,16 +25,36 @@ class IPFS(APIView):
     def post (self, request, format='pdf'):
         try:
 
+            ## get the base64 image from the user if this send true in checkbox
+            db = firestore.client()
+
             now = str(time.time())
 
             data = QueryDict.dict(request.POST)
+            print('DATA -> ', data)
             print(request.FILES['file'])
             filename = now + '.pdf'
+            Image = None
+
+            ref = db.collection('signature').document(data['uid'])
+            doc = ref.get()
+            if doc.exists:
+                base = doc.to_dict()
+                Image = base['image']
+                decodeit = open(now+'.png', 'wb')
+                decodeit.write(base64.b64decode((Image)))
+                decodeit.close()
+
+            else:
+                print(u'No such document!')
+
+
 
             packet = io.BytesIO()
             can = canvas.Canvas(packet, pagesize=letter)
             can.setFont("Times-Roman", 15)
             can.setFillColor('red')
+            can.drawImage(image=now + '.png', x=0, y=-100, width=400, height=600)
             # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
             can.drawString(10, 500, f"DOC-SIGN : <{ filename  }>")
             can.save()
@@ -59,11 +82,14 @@ class IPFS(APIView):
 
             # doc = default_storage.url(filename)
 
+            """
             ipfs = ipfsApi.Client('127.0.0.1', 5001)
             hash_info = ipfs.add(filename)
             print('IPFS response -> ',hash_info)
             os.remove(filename)
             signature =  hash_info['Hash']
+            """
+            signature = '1231231231029381092380192'
 
             ### save insert into database
             document = {
@@ -77,6 +103,8 @@ class IPFS(APIView):
             doc_ref = db.collection('documents').document(data['uid']).collection('files').document(signature)
             save = doc_ref.set(document)
             print(save)
+            os.remove( now + ".png" )
+            # os.remove( now + ".pdf" )
 
             return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
