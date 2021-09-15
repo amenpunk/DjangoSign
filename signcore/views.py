@@ -10,8 +10,10 @@ from rest_framework.views import APIView
 from rest_framework.parsers import FileUploadParser, MultiPartParser
 from django.core.files import File
 from firebase_admin import firestore
-from reportlab.lib.utils import ImageReader
 import base64
+import locale
+from datetime import datetime, timedelta
+
 
 import ipfsApi
 import io
@@ -25,6 +27,7 @@ class IPFS(APIView):
     def post (self, request, format='pdf'):
         try:
 
+            dt = datetime.now()
             ## get the base64 image from the user if this send true in checkbox
             db = firestore.client()
 
@@ -51,12 +54,17 @@ class IPFS(APIView):
 
 
             packet = io.BytesIO()
+            redeable  = dt.strftime("%A %d de %B del %Y - %H:%M")
             can = canvas.Canvas(packet, pagesize=letter)
             can.setFont("Times-Roman", 15)
-            can.setFillColor('red')
-            can.drawImage(image=now + '.png', x=0, y=-100, width=400, height=600)
-            # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
-            can.drawString(10, 500, f"DOC-SIGN : <{ filename  }>")
+            can.drawImage(image=now + '.png', x=20, y=0, width=200, height=300)
+            can.line(x1=100,y1=100, x2=20,y2=900)
+
+            can.drawString(20, 600, f"UID : <{ data['uid'] }>")
+            can.drawString(20, 630, f"TIMESTAMP : <{ now }>")
+            can.drawString(20, 660, f"DATE : <{ redeable }>")
+            can.drawString(20, 690, f"DOC-SIGN : <{ filename  }>")
+            can.drawString(20, 720, f"FILENAME : <{ data['filename']  }>")
             can.save()
 
             packet.seek(0)
