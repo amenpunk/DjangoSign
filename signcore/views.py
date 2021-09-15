@@ -28,9 +28,7 @@ class IPFS(APIView):
         try:
 
             dt = datetime.now()
-            ## get the base64 image from the user if this send true in checkbox
             db = firestore.client()
-
             now = str(time.time())
 
             data = QueryDict.dict(request.POST)
@@ -38,33 +36,37 @@ class IPFS(APIView):
             print(request.FILES['file'])
             filename = now + '.pdf'
             Image = None
+            Sign = int(data['sign'])
 
-            ref = db.collection('signature').document(data['uid'])
-            doc = ref.get()
-            if doc.exists:
-                base = doc.to_dict()
-                Image = base['image']
-                decodeit = open(now+'.png', 'wb')
-                decodeit.write(base64.b64decode((Image)))
-                decodeit.close()
-
-            else:
-                print(u'No such document!')
-
+            if Sign == 1:
+                ref = db.collection('signature').document(data['uid'])
+                doc = ref.get()
+                if doc.exists:
+                    base = doc.to_dict()
+                    Image = base['image']
+                    decodeit = open(now+'.png', 'wb')
+                    decodeit.write(base64.b64decode((Image)))
+                    decodeit.close()
+                else:
+                    print(u'No such document!')
 
 
             packet = io.BytesIO()
             redeable  = dt.strftime("%A %d de %B del %Y - %H:%M")
             can = canvas.Canvas(packet, pagesize=letter)
             can.setFont("Times-Roman", 15)
-            can.drawImage(image=now + '.png', x=20, y=0, width=200, height=300)
-            can.line(x1=100,y1=100, x2=20,y2=900)
 
             can.drawString(20, 600, f"UID : <{ data['uid'] }>")
             can.drawString(20, 630, f"TIMESTAMP : <{ now }>")
             can.drawString(20, 660, f"DATE : <{ redeable }>")
-            can.drawString(20, 690, f"DOC-SIGN : <{ filename  }>")
+            can.drawString(20, 690, f"SERVER TIMESTAMP: <{ datetime.now() }>")
             can.drawString(20, 720, f"FILENAME : <{ data['filename']  }>")
+
+            if Sign and Image:
+                can.drawImage(image=now + '.png', x=20, y=0, width=200, height=300)
+                can.line(x1=43,y1=50, x2=250,y2=50)
+                can.drawString(x=30, y=50,text="F ")
+
             can.save()
 
             packet.seek(0)
@@ -102,6 +104,7 @@ class IPFS(APIView):
             ### save insert into database
             document = {
                 'write' : time.time(),
+                'timestamp' :datetime.now(),
                 'hash' : signature,
                 'filename' : data['filename']
             }
@@ -110,9 +113,13 @@ class IPFS(APIView):
 
             doc_ref = db.collection('documents').document(data['uid']).collection('files').document(signature)
             save = doc_ref.set(document)
+
             print(save)
-            os.remove( now + ".png" )
-            # os.remove( now + ".pdf" )
+            if Image:
+                os.remove( now + ".png" )
+                # os.remove( now + ".pdf" )
+            #else:
+            #    os.remove( now + ".pdf" )
 
             return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
