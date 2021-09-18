@@ -5,6 +5,7 @@ from rest_framework import routers
 from . import views
 from .DB_API import API
 from .Sign import Sign
+from .Firma import Firma
 
 router = routers.DefaultRouter()
 
@@ -16,4 +17,5 @@ urlpatterns = [
     path('ipfs', views.IPFS.as_view()),
     path('file', API.as_view()),
     path('sign', Sign.as_view()),
+    path('firma', Firma.as_view()),
 ]
