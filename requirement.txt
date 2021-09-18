@@ -1,7 +1,7 @@
-djangorestframework==
-firebase-admin==
-pyPdf==
-pyPdf2==
-ipfs-api==
-reportlab==
+djangorestframework
+firebase-admin
+pyPdf
+pyPdf2
+ipfs-api
+reportlab
 
