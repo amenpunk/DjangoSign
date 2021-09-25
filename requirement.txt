@@ -4,4 +4,5 @@ pyPdf
 pyPdf2
 ipfs-api
 reportlab
+pyota
 

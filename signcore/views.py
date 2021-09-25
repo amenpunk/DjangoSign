@@ -114,10 +114,10 @@ class IPFS(APIView):
 
             print(save)
             if Image:
-                os.remove( now + ".png" )
-                os.remove( now + ".pdf" )
+                os.remove( signature + ".png" )
+                os.remove( signature + ".pdf" )
             else:
-               os.remove( now + ".pdf" )
+               os.remove( signature + ".pdf" )
 
             return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
