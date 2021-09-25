@@ -92,14 +92,11 @@ class IPFS(APIView):
 
             # doc = default_storage.url(filename)
 
-            """
             ipfs = ipfsApi.Client('127.0.0.1', 5001)
             hash_info = ipfs.add(filename)
             print('IPFS response -> ',hash_info)
             os.remove(filename)
             signature =  hash_info['Hash']
-            """
-            signature = '1231231231029381092380192'
 
             ### save insert into database
             document = {
