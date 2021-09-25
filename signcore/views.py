@@ -103,7 +103,8 @@ class IPFS(APIView):
                 'write' : time.time(),
                 'timestamp' :datetime.now(),
                 'hash' : signature,
-                'filename' : data['filename']
+                'filename' : data['filename'],
+                'custom' : False
             }
 
             db = firestore.client()
@@ -114,9 +115,9 @@ class IPFS(APIView):
             print(save)
             if Image:
                 os.remove( now + ".png" )
-                # os.remove( now + ".pdf" )
-            #else:
-            #    os.remove( now + ".pdf" )
+                os.remove( now + ".pdf" )
+            else:
+               os.remove( now + ".pdf" )
 
             return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
