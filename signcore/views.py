@@ -112,8 +112,13 @@ class IPFS(APIView):
             save = doc_ref.set(document)
 
             print(save)
-            if Image:
-                os.remove( now + ".png" )
+            try:
+                if Image:
+                    os.remove( now + ".png" )
+                else:
+                    os.remove( now + '.pdf' )
+            except BaseException as e:
+                print('cannot delete')
 
             return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
