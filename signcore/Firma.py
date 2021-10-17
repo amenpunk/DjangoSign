@@ -32,7 +32,7 @@ class Firma(APIView):
                 files.append(dic)
             print(files)
 
-            return JsonResponse( { 'status': True, "why" : 'success', 'data' : [] })
+            return JsonResponse( { 'status': True, "why" : 'success', 'data' : files  })
 
         except BaseException as e:
             print(e)
@@ -49,6 +49,7 @@ class Firma(APIView):
             qr = data['hash']
             name = data['name']
             mail = data['mail']
+            filename = data['filename']
 
             db = firestore.client()
 
@@ -70,7 +71,8 @@ class Firma(APIView):
                 'document' : qr,
                 'timestamp' :datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"),
                 'name' :  name,
-                'mail' :  mail
+                'mail' :  mail,
+                'file' : filename
             }
 
             to_put = json.dumps(document)

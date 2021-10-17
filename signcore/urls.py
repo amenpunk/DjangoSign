@@ -6,6 +6,7 @@ from . import views
 from .DB_API import API
 from .Sign import Sign
 from .Firma import Firma
+from .ValideHash import ValideHash
 
 router = routers.DefaultRouter()
 
@@ -18,4 +19,5 @@ urlpatterns = [
     path('file', API.as_view()),
     path('sign', Sign.as_view()),
     path('firma', Firma.as_view()),
+    path('validate', ValideHash.as_view()),
 ]

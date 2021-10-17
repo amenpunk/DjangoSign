@@ -107,9 +107,13 @@ class IPFS(APIView):
             }
 
             db = firestore.client()
-
             doc_ref = db.collection('documents').document(data['uid']).collection('files').document(signature)
             save = doc_ref.set(document)
+
+
+            document['uid'] = data['uid']
+            db.collection('files').add( document )
+
 
             print(save)
             try:
