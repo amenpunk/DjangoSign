@@ -10,7 +10,7 @@ from iota import Iota, TryteString, Address, Tag, ProposedTransaction
 from pprint import pprint
 import json
 
-
+import time
 
 import json
 
@@ -20,12 +20,17 @@ class Firma(APIView):
         try:
             data = QueryDict.dict(request.GET)
             uid = data['uid']
-            hash = data['hash']
-            # db = firestore.client()
+            print(data)
 
-            # sign_ref = db.collection('signature').document(uid)
-            # doc = sign_ref.get()
-            # files = doc.to_dict()
+            db = firestore.client()
+            sign_ref = db.collection('usersigns').document(uid).collection("signs")
+            docs = sign_ref.stream()
+            files = []
+
+            for doc in docs:
+                dic = doc.to_dict()
+                files.append(dic)
+            print(files)
 
             return JsonResponse( { 'status': True, "why" : 'success', 'data' : [] })
 
@@ -38,9 +43,13 @@ class Firma(APIView):
         try:
 
             data=json.loads(request.body)
+            print(data)
 
             uid = data['uid']
             qr = data['hash']
+            name = data['name']
+            mail = data['mail']
+
             db = firestore.client()
 
             ### find if already exist
@@ -54,11 +63,14 @@ class Firma(APIView):
                 print(u'No such document!')
 
             ref = db.collection('firmas').document(qr).collection('users').document(uid)
+            ref_my_sings = db.collection('usersigns').document(uid).collection('signs').document(qr)
 
             document = {
                 'uid' : uid,
                 'document' : qr,
                 'timestamp' :datetime.now().strftime("%d-%b-%Y (%H:%M:%S.%f)"),
+                'name' :  name,
+                'mail' :  mail
             }
 
             to_put = json.dumps(document)
@@ -71,8 +83,10 @@ class Firma(APIView):
             response = api.send_transfer([tx])
             signature = response['bundle'][0].hash
             document['signature'] = str(signature)
+            document['write']  = time.time()
+
             save = ref.set(document)
-            print(save)
+            save_my_signs = ref_my_sings.set(document)
 
             return JsonResponse({ 'status':  True,'head' : 'Excelente!!', 'message' : 'Tu firma fue realizada' })
         except BaseException as e:
