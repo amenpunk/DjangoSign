@@ -5,4 +5,6 @@ pyPdf2
 ipfs-api
 reportlab
 pyota
+django-cors-headers 
+
 
