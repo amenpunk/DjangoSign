@@ -36,7 +36,37 @@ class IPFS(APIView):
             print(request.FILES['file'])
             filename = now + '.pdf'
             Image = None
-            Sign = int(data['sign'])
+
+            Sign = int(data['manuscrita'])
+            newPage = int(data['new_page'])
+
+            if not newPage:
+
+                if Sign:
+                    # si no agregar una nueva pagina pero si firmar agregarla en cordenadas 0,0
+                    print('ver opciones viejas')
+                ## si selecciona que no agregar una pagina solo subir a ipfs
+                print('No es necesario agregar nueva pagina')
+                ipfs = ipfsApi.Client('127.0.0.1', 5001)
+                hash_info = ipfs.add( request.FILES['file'] )
+                print('IPFS response -> ',hash_info)
+                signature = hash_info['Hash']
+
+                document = {
+                    'write' : time.time(),
+                    'timestamp' :datetime.now(),
+                    'hash' : signature,
+                    'filename' : data['filename'],
+                }
+
+                db = firestore.client()
+                doc_ref = db.collection('documents').document(data['uid']).collection('files').document(signature)
+                save = doc_ref.set(document)
+
+                document['uid'] = data['uid']
+                db.collection('files').add( document )
+
+                return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
             if Sign == 1:
                 ref = db.collection('signature').document(data['uid'])
