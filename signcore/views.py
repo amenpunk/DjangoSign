@@ -36,19 +36,49 @@ class IPFS(APIView):
             print(request.FILES['file'])
             filename = now + '.pdf'
             Image = None
+            userid = data['uid'];
 
             Sign = int(data['manuscrita'])
             newPage = int(data['new_page'])
 
             if not newPage:
 
+                file = None
                 if Sign:
-                    # si no agregar una nueva pagina pero si firmar agregarla en cordenadas 0,0
-                    print('ver opciones viejas')
+                    packet = io.BytesIO()
+                    can = canvas.Canvas(packet, pagesize=letter)
+                    can.setFont("Times-Roman", 15)
+                    can.setFillColor('red')
+                    # can.drawString(70, 750, f"DOC-SIGN : <{signature}>")
+                    can.drawString(0,0, f"UID-SIGN : <{userid}> TIME : <{dt}>")
+                    can.save()
+
+                    packet.seek(0)
+                    new_pdf = PdfFileReader(packet)
+                    existing_pdf = PdfFileReader( request.FILES['file']   )
+                    output = PdfFileWriter()
+
+
+                    if new_pdf.isEncrypted:
+                        new_pdf.decrypt('')
+
+                    if existing_pdf.isEncrypted:
+                        existing_pdf.decrypt('')
+
+                    page = existing_pdf.getPage(0)
+                    page.mergePage(new_pdf.getPage(0))
+                    output.addPage(page)
+                    outputStream = open(filename, "wb")
+                    output.write(outputStream)
+                    outputStream.close()
+
+                    file = filename
+                else:
+                   file = request.FILES['file']
                 ## si selecciona que no agregar una pagina solo subir a ipfs
                 print('No es necesario agregar nueva pagina')
                 ipfs = ipfsApi.Client('127.0.0.1', 5001)
-                hash_info = ipfs.add( request.FILES['file'] )
+                hash_info = ipfs.add( file )
                 print('IPFS response -> ',hash_info)
                 signature = hash_info['Hash']
 
@@ -65,6 +95,13 @@ class IPFS(APIView):
 
                 document['uid'] = data['uid']
                 db.collection('files').add( document )
+
+                try:
+                    os.remove(filename)
+                except BaseException as e:
+                    print('document created cannot be deleted')
+
+
 
                 return JsonResponse( { 'status': True, "why" : 'success', "data" : document }, safe=False)
 
@@ -111,7 +148,7 @@ class IPFS(APIView):
 
             # file_string = io.BytesIO()
 
-            merge = PdfFileMerger()
+            merge = PdfFileReader()
             merge.append(existing_pdf)
             merge.append(new_pdf)
             merge.write(filename)
