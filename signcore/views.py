@@ -148,7 +148,7 @@ class IPFS(APIView):
 
             # file_string = io.BytesIO()
 
-            merge = PdfFileReader()
+            merge = PdfFileMerger()
             merge.append(existing_pdf)
             merge.append(new_pdf)
             merge.write(filename)
@@ -195,7 +195,7 @@ class IPFS(APIView):
 
         except BaseException as e:
             print(e)
-            return JsonResponse( { 'status': False, "why" : e }, safe=False)
+            return JsonResponse( { 'status': False, "why" : 'rrrorrr' }, safe=False)
 
     def get(self,request):
         try:
